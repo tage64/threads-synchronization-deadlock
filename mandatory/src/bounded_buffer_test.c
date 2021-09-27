@@ -4,6 +4,8 @@
  * History:
  *
  * 2020 - Original version by Karl Marklund <karl.marklund@it.uu.se>.
+ *
+ * 2021 - Updated behaviour for Ubuntu machines <bjorn.safsten.5186@student.uu.se>.
  */
 
 #include "bounded_buffer.h"
@@ -24,12 +26,19 @@ void success() {
 
 void init_test() {
   TEST_HEADER;
-
   buffer_t buffer;
+  
+  buffer.array = NULL;
+  buffer.mutex = NULL;
+  buffer.data = NULL;
+  buffer.empty = NULL;
+  
 
   buffer_init(&buffer, 10);
 
   assert(buffer.size == 10);
+  assert(buffer.in == 0);
+  assert(buffer.out == 0);
   assert(buffer.array != NULL);
   assert(buffer.mutex != NULL);
   assert(buffer.data  != NULL);
