@@ -107,10 +107,11 @@ void make_running(tid_t tid) {
     return;
   
   thread_t *new_running = &threads[tid];
+  thread_t *current_running = &threads[running_thread];
   new_running->state = running;
   running_thread = tid;
 
-  if (setcontext(&new_running->ctx) < 0) {
+  if (swapcontext(&current_running->ctx, &new_running->ctx) < 0) {
     perror("setcontext");
     exit(EXIT_FAILURE);
   }

@@ -131,5 +131,7 @@ int main(){
 
   init(); // Initialization
   spawn(magic_numbers);
-  spawn(fibonacci_slow);
+  spawn(numbers);
+  while(true)
+    yield();
 }
