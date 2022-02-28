@@ -89,6 +89,7 @@ void init_context(ucontext_t *ctx, ucontext_t *next) {
   ctx->uc_stack.ss_flags = 0;
 }
 
+// Append a thread to the ready queue and set its state to ready.
 void ready_queue_append(tid_t tid) {
   if (ready_queue_last < 0)
     ready_queue_first = tid;
@@ -99,21 +100,18 @@ void ready_queue_append(tid_t tid) {
   threads[tid].next = -1;
 }
 
+// Make a thread running and change its state to running.
+// // The state of the previously running state is unmodified.
 void make_running(tid_t tid) {
   if (running_thread == tid)
     return;
   
-  thread_t *current_running = &threads[running_thread];
   thread_t *new_running = &threads[tid];
   new_running->state = running;
+  running_thread = tid;
 
-  // Now, we should swap the contexts but we also need to swap the pointers to the contexts.
-  ucontext_t running_ctx = current_running->ctx;
-  current_running->ctx = new_running->ctx;
-  new_running->ctx = running_ctx;
-
-  if (swapcontext(&new_running->ctx, &current_running->ctx) < 0) {
-    perror("swapcontext");
+  if (setcontext(&new_running->ctx) < 0) {
+    perror("setcontext");
     exit(EXIT_FAILURE);
   }
 }
@@ -182,6 +180,7 @@ tid_t spawn(void (*start)()){
   if (next_availlable_tid < 0)
     return -1;
   tid_t tid = next_availlable_tid;
+  next_availlable_tid++;
   ucontext_t ctx;
   init_context(&ctx, NULL);
   makecontext(&ctx, (void (*)())run_thread, 2, tid, start);

@@ -1,7 +1,7 @@
-DEBUG   := n
+DEBUG   := y
 CC      := gcc
 OS      := $(shell uname)
-CFLAGS  := -std=gnu99 -Werror -Wall  -Wno-deprecated-declarations
+CFLAGS  := -std=gnu99 -Werror -Wall  -Wno-deprecated-declarations -DEBUG -g
 LDFLAGS :=
 
 ifeq ($(DEBUG), y	)
