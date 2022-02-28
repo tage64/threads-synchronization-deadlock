@@ -28,7 +28,15 @@ struct thread {
   tid_t tid;
   state_t state;
   ucontext_t ctx;
-  thread_t *next; /* can use this to create a linked list of threads */
+
+  // If this thread is ready, this is the id to the next thread in the ready queue.
+  // If this thread is waiting, this is the id to the next thread waiting on the same resource.
+  // -1 Indicates this is the last.
+  tid_t next;
+
+  // The first thread that is waiting for this thread to terminate.
+  // If more than one thread is waiting on this thread, they are connected in a linked list by the `next` field.
+  tid_t first_join_thread;
 };
 
 
