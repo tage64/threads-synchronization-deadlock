@@ -140,7 +140,6 @@ void terminate_thread(tid_t tid) {
 
 void run_thread(tid_t tid, void (*start)()) {
   start();
-  terminate_thread(tid);
 }
 
 /*******************************************************************************
@@ -203,8 +202,13 @@ void yield(){
 }
 
 void  done(){
+  terminate_thread(running_thread);
 }
 
 tid_t join(tid_t thread) {
-  return -1;
+  threads[running_thread].next = thread;
+  threads[thread].first_join_thread = running_thread;
+  threads[running_thread].state = waiting;
+  select_next_ready();
+  return thread;
 }

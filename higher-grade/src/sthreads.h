@@ -36,6 +36,7 @@ struct thread {
 
   // The first thread that is waiting for this thread to terminate.
   // If more than one thread is waiting on this thread, they are connected in a linked list by the `next` field.
+  // -1 if noone is waiting.
   tid_t first_join_thread;
 };
 
