@@ -127,6 +127,10 @@ void magic_numbers() {
 
 
 int main(){
+  /* Flush each printf() as it happens. */
+  setvbuf(stdout, 0, _IOLBF, 0);
+  setvbuf(stderr, 0, _IOLBF, 0);
+
   puts("\n==== Test program for the Simple Threads API ====\n");
 
   init(); // Initialization
