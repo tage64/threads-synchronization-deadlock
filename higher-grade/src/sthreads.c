@@ -89,6 +89,13 @@ void init_context(ucontext_t *ctx, ucontext_t *next) {
   ctx->uc_stack.ss_flags = 0;
 }
 
+/* Initialize context ctx  with a call to function func with zero argument.
+ */
+void init_context0(ucontext_t *ctx, void (*func)(), ucontext_t *next) {
+  init_context(ctx, next);
+  makecontext(ctx, func, 0);
+}
+
 // Append a thread to the ready queue and set its state to ready.
 void ready_queue_append(tid_t tid) {
   if (ready_queue_last < 0)
@@ -128,18 +135,13 @@ void select_next_ready() {
 void terminate_thread(tid_t tid) {
   thread_t *thread = &threads[tid];
   thread->state = terminated;
-  if (thread->first_join_thread >= 0) {
-    // Loop threw all waiting thread and change their state from waiting to ready.
-    tid_t join_thread = thread->first_join_thread;
-    while (join_thread >= 0) {
-      ready_queue_append(join_thread);
-    }
+  // Loop threw all waiting thread and change their state from waiting to ready.
+  tid_t join_thread = thread->first_join_thread;
+  while (join_thread >= 0) {
+    ready_queue_append(join_thread);
+    join_thread = threads[join_thread].next;
   }
   select_next_ready();
-}
-
-void run_thread(tid_t tid, void (*start)()) {
-  start();
 }
 
 /*******************************************************************************
@@ -182,8 +184,7 @@ tid_t spawn(void (*start)()){
   tid_t tid = next_availlable_tid;
   next_availlable_tid++;
   ucontext_t ctx;
-  init_context(&ctx, NULL);
-  makecontext(&ctx, (void (*)())run_thread, 2, tid, start);
+  init_context0(&ctx, start, NULL);
   threads[tid] = (thread_t){
     .tid = tid,
     .ctx = ctx,
@@ -205,10 +206,14 @@ void  done(){
   terminate_thread(running_thread);
 }
 
-tid_t join(tid_t thread) {
-  threads[running_thread].next = thread;
-  threads[thread].first_join_thread = running_thread;
-  threads[running_thread].state = waiting;
+tid_t join(tid_t tid) {
+  thread_t *wait_for = &threads[tid];
+  thread_t *current_thread = &threads[running_thread];
+
+  // Prepend current_thread to the linked list of waiting threads.
+  current_thread->next = wait_for->first_join_thread;
+  wait_for->first_join_thread = running_thread;
+  current_thread->state = waiting;
   select_next_ready();
-  return thread;
+  return tid;
 }

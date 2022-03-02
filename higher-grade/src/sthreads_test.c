@@ -130,8 +130,11 @@ int main(){
   puts("\n==== Test program for the Simple Threads API ====\n");
 
   init(); // Initialization
-  spawn(magic_numbers);
-  spawn(numbers);
-  while(true)
-    yield();
+  tid_t thread1 = spawn(magic_numbers);
+  tid_t thread2 = spawn(numbers);
+  join(thread2);
+  printf("Thread2 done!\n");
+  join(thread1);
+  printf("Thread1 done!\n");
+  done();
 }
