@@ -230,18 +230,6 @@ void select_next_ready() {
   make_running(tid);
 }
 
-void terminate_thread(tid_t tid) {
-  thread_t *thread = &threads[tid];
-  thread->state = terminated;
-  // Loop threw all waiting thread and change their state from waiting to ready.
-  tid_t join_thread = thread->first_join_thread;
-  while (join_thread >= 0) {
-    ready_queue_append(join_thread);
-    join_thread = threads[join_thread].next;
-  }
-  select_next_ready();
-}
-
 /*******************************************************************************
                     Implementation of the Simple Threads API
 ********************************************************************************/
@@ -309,7 +297,15 @@ void yield(){
 void  done(){
   // Critical section
   disable_timer(NULL);
-  terminate_thread(running_thread);
+  thread_t *thread = &threads[running_thread];
+  thread->state = terminated;
+  // Loop threw all waiting thread and change their state from waiting to ready.
+  tid_t join_thread = thread->first_join_thread;
+  while (join_thread >= 0) {
+    ready_queue_append(join_thread);
+    join_thread = threads[join_thread].next;
+  }
+  select_next_ready();
 }
 
 tid_t join(tid_t tid) {
