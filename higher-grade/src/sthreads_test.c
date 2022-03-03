@@ -134,11 +134,14 @@ int main(){
   puts("\n==== Test program for the Simple Threads API ====\n");
 
   init(); // Initialization
-  tid_t thread1 = spawn(magic_numbers);
+  tid_t thread1 = spawn(fibonacci_slow);
   tid_t thread2 = spawn(numbers);
+  tid_t thread3 = spawn(fibonacci_slow);
   join(thread2);
   printf("Thread2 done!\n");
   join(thread1);
   printf("Thread1 done!\n");
+  join(thread3);
+  printf("Thread3 done!\n");
   done();
 }

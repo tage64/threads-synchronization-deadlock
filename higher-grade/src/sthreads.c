@@ -25,7 +25,7 @@
 
 // Maximum number of threads
 #define MAX_NO_THREADS 64
-#define TIMEOUT    50          // ms 
+#define TIMEOUT    10          // ms 
 #define TIMER_TYPE ITIMER_REAL // Type of timer.
 
 
@@ -102,7 +102,7 @@ int timer_signal(int timer_type) {
    ms: time in ms for the timer. 
 
  */
-void set_timer(void (*handler) (int), int ms) {
+void set_timer(void (*handler)(), int ms) {
   struct itimerval timer;
   struct sigaction sa;
 
@@ -123,26 +123,27 @@ void set_timer(void (*handler) (int), int ms) {
   };
 }
 
-// Pause the timer.
+// Disable the timer
 // This is used to enter a critical section when threads should not be preempted.
 //
-//   type: type of timer
-//   paused_timer: a pointer where the current timer will be put
-void pause_timer(struct itimerval *paused_timer) {
+// old_timer is a pointer where the old (disabled) timer will be put.
+void disable_timer(struct itimerval *old_timer) {
   struct itimerval null_timer;
   null_timer.it_value.tv_sec = 0;
   null_timer.it_value.tv_usec = 0;
+  null_timer.it_interval.tv_sec = 0;
+  null_timer.it_interval.tv_usec = 0;
 
-  if (setitimer (TIMER_TYPE, &null_timer, paused_timer) < 0) {
-    perror("Setting timer");
+  if (setitimer (TIMER_TYPE, &null_timer, old_timer) < 0) {
+    perror("Setting timer in disable");
     exit(EXIT_FAILURE);
   };
 }
 
 // Resume a timer
-void resume_timer(struct itimerval timer) {
-  if (setitimer (TIMER_TYPE, &timer, NULL) < 0) {
-    perror("Setting timer");
+void resume_timer(struct itimerval *timer) {
+  if (setitimer (TIMER_TYPE, timer, NULL) < 0) {
+    perror("Setting timer in resume");
     exit(EXIT_FAILURE);
   };
 }
@@ -188,9 +189,6 @@ void init_context0(ucontext_t *ctx, void (*func)(), ucontext_t *next) {
 
 // Append a thread to the ready queue and set its state to ready.
 void ready_queue_append(tid_t tid) {
-  // Critical section
-  struct itimerval timer;
-  pause_timer(&timer);
   if (ready_queue_last < 0)
     ready_queue_first = tid;
   else
@@ -198,7 +196,11 @@ void ready_queue_append(tid_t tid) {
   ready_queue_last = tid;
   threads[tid].state = ready;
   threads[tid].next = -1;
-  resume_timer(timer);
+}
+
+// Wrapper around yield() that is used as signal handler.
+void yield_wrapper(int _sig) {
+  yield();
 }
 
 // Make a thread running and change its state to running.
@@ -212,7 +214,8 @@ void make_running(tid_t tid) {
   new_running->state = running;
   running_thread = tid;
 
-  set_timer(yield, TIMEOUT);
+  set_timer(yield_wrapper, TIMEOUT);
+  // We hope the timer doesn't timeout here.
   if (swapcontext(&current_running->ctx, &new_running->ctx) < 0) {
     perror("setcontext");
     exit(EXIT_FAILURE);
@@ -274,6 +277,9 @@ int  init(){
 
 
 tid_t spawn(void (*start)()){
+  // Critical section
+  disable_timer(NULL);
+
   if (next_availlable_tid < 0)
     return -1;
   tid_t tid = next_availlable_tid;
@@ -293,15 +299,24 @@ tid_t spawn(void (*start)()){
 }
 
 void yield(){
+  // Critical section
+  disable_timer(NULL);
+
   ready_queue_append(running_thread);
   select_next_ready();
 }
 
 void  done(){
+  // Critical section
+  disable_timer(NULL);
   terminate_thread(running_thread);
 }
 
 tid_t join(tid_t tid) {
+  // Critical section
+  struct itimerval paused_timer;
+  disable_timer(&paused_timer);
+
   thread_t *wait_for = &threads[tid];
   thread_t *current_thread = &threads[running_thread];
 
@@ -310,5 +325,7 @@ tid_t join(tid_t tid) {
   wait_for->first_join_thread = running_thread;
   current_thread->state = waiting;
   select_next_ready();
+
+  resume_timer(&paused_timer);
   return tid;
 }
